@@ -1,0 +1,26 @@
+{
+  "business_name": "Ilyas Consultancy",
+  "period": "Q1 2025",
+  "sales": [
+    { "product": "Espresso",  "units_sold": 1200, "revenue": 3600.00 },
+    { "product": "Latte",     "units_sold":  800, "revenue": 4000.00 },
+    { "product": "Cold Brew", "units_sold":  300, "revenue": 1800.00 },
+    { "product": "Cappuccino","units_sold":  450, "revenue": 2250.00 }
+  ],
+  "reviews": [
+    { "score": 5, "text": "Best coffee in town—rich flavor and great service!" },
+    { "score": 2, "text": "Milk was cold and bitter. Needs better steaming process." },
+    { "score": 4, "text": "Lovely atmosphere but a bit pricey for daily visits." },
+    { "score": 3, "text": "Good espresso but lines get too long during mornings." }
+  ],
+  "marketing_spend": [
+    { "channel": "Instagram Ads", "budget_usd":1200, "clicks":1500, "conversions":45 },
+    { "channel": "Google Search", "budget_usd":1800, "clicks":2100, "conversions":60 },
+    { "channel": "Local Flyers",  "budget_usd": 500, "distributions":2000, "redemptions":30 }
+  ],
+  "inventory_levels": [
+    { "item": "Whole Bean Coffee", "on_hand_kg":50, "reorder_threshold_kg":20 },
+    { "item": "Milk (gallons)",    "on_hand":80,   "reorder_threshold":30 },
+    { "item": "Syrups (bottles)",  "on_hand":40,   "reorder_threshold":15 }
+  ]
+}

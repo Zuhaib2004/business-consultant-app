@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Business Consultant Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body.dark-mode { background: #1e1e1e; color: #ccc; }
+    body { display: flex; flex-direction: column; font-family: 'Inter', sans-serif; background-color: #ffffff; color: #000000; }
+    header { display: flex; justify-content: space-between; align-items: center; background-color: #343541; color: #f8f9fa; padding: 1rem; }
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+    #headerControls { display: flex; gap: 0.5rem; }
+    #headerControls button, #headerControls select { background: #10a37f; color: #fff; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer; }
+    #headerControls select { background: #fff; color: #000; }
+    #controlsBar { display: flex; gap: 0.5rem; padding: 0.5rem 1rem; background: #f0f0f0; }
+    body.dark-mode #controlsBar { background: #2a2a2a; }
+    #controlsBar input, #controlsBar button { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+    #controlsBar input { flex: 1; }
+    #chatWindow { flex: 1; padding: 1rem; overflow-y: auto; background-color: #f7f7f8; }
+    body.dark-mode #chatWindow { background-color: #2a2a2a; }
+    .message { display: flex; align-items: flex-start; margin-bottom: 0.75rem; }
+    .message.user { justify-content: flex-end; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; margin: 0 0.5rem; }
+    .bubble { max-width: 75%; padding: 0.75rem 1rem; border-radius: 18px; line-height: 1.5; background-color: #e9e9eb; color: #222; white-space: pre-wrap; }
+    body.dark-mode .bubble { background-color: #3a3a3a; color: #ddd; }
+    .message.user .bubble { background-color: #10a37f; color: #ffffff; border-bottom-right-radius: 3px; }
+    .message.bot .bubble { background-color: #ffffff; border-bottom-left-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+    body.dark-mode .message.bot .bubble { background-color: #444654; }
+    footer { display: flex; padding: 0.75rem 1rem; background-color: #343541; }
+    #messageInput { flex: 1; padding: 0.75rem 1rem; border: none; border-radius: 18px; font-size: 1rem; outline: none; }
+    #sendBtn { margin-left: 0.5rem; background-color: #10a37f; border: none; border-radius: 18px; color: #ffffff; padding: 0 1rem; cursor: pointer; }
+    #sendBtn:hover { background-color: #0e8e68; }
+    canvas { display: block; margin: 0.75rem auto; width: 100% !important; height: 300px !important; border-radius: 8px; }
+    img.chart-image { display: block; margin: 0.75rem auto; width: 90%; max-height: 300px; border-radius: 8px; }
+    #chatWindow::-webkit-scrollbar { width: 6px; }
+    #chatWindow::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    body.dark-mode #chatWindow::-webkit-scrollbar-thumb { background: #555; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Business Consultant</h1>
+    <div id="headerControls">
+      <select id="sessionSelector"></select>
+      <button id="newSessionBtn">New Session</button>
+      <button id="themeToggle">Toggle Theme</button>
+      <button id="clearBtn">Clear Chat</button>
+    </div>
+  </header>
+  <div id="controlsBar">
+    <input id="searchInput" type="text" placeholder="Search chat..." />
+    <button id="summarizeBtn">Summarize Chat</button>
+  </div>
+  <div id="chatWindow"></div>
+  <footer>
+    <input id="messageInput" type="text" placeholder="Type your question and press Enter..." autocomplete="off" />
+    <button id="sendBtn">Send</button>
+  </footer>
+  <script>
+    // Session Management
+    const sessions = JSON.parse(localStorage.getItem('sessions')||'[]');
+    const sessionSelector = document.getElementById('sessionSelector');
+    const newSessionBtn = document.getElementById('newSessionBtn');
+    let sessionId = localStorage.getItem('currentSession') || '';
+    function populateSessions() {
+      sessionSelector.innerHTML = '';
+      sessions.forEach(s => {
+        const opt = document.createElement('option'); opt.value = s; opt.text = s; sessionSelector.append(opt);
+      });
+      if (!sessionId && sessions.length) sessionId = sessions[0];
+      sessionSelector.value = sessionId;
+    }
+    newSessionBtn.onclick = () => {
+      const name = prompt('Enter session name:');
+      if (name) {
+        sessions.push(name);
+        localStorage.setItem('sessions', JSON.stringify(sessions));
+        sessionId = name;
+        localStorage.setItem('currentSession', sessionId);
+        populateSessions();
+        chatWindow.innerHTML = '';
+      }
+    };
+    sessionSelector.onchange = () => {
+      sessionId = sessionSelector.value;
+      localStorage.setItem('currentSession', sessionId);
+      chatWindow.innerHTML = '';
+    };
+    populateSessions();
+
+    // Theme Toggle
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.onclick = () => {
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('theme', document.body.classList.contains('dark-mode'));
+    };
+    if (localStorage.getItem('theme') === 'true') document.body.classList.add('dark-mode');
+
+    // Clear Chat
+    const clearBtn = document.getElementById('clearBtn');
+    clearBtn.onclick = () => { document.getElementById('chatWindow').innerHTML = ''; };
+
+    // Search Chat
+    const searchInput = document.getElementById('searchInput');
+    searchInput.oninput = () => {
+      const term = searchInput.value.toLowerCase();
+      document.querySelectorAll('#chatWindow .message').forEach(msg => {
+        msg.style.display = msg.innerText.toLowerCase().includes(term) ? '' : 'none';
+      });
+    };
+
+    // Summarize Chat
+    const summarizeBtn = document.getElementById('summarizeBtn');
+    summarizeBtn.onclick = () => {
+      if (!sessionId) return alert('Create or select a session first');
+      input.value = 'Please summarize our conversation so far.';
+      sendMessage();
+    };
+
+    // Chat Logic
+    let businessData;
+    fetch('business_data.json').then(r=>r.json()).then(d=>businessData=d).catch(console.error);
+    const chatWindow = document.getElementById('chatWindow');
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const avatars = { user:'https://img.icons8.com/ios-filled/50/000000/user.png', bot:'https://img.icons8.com/ios-filled/50/000000/artificial-intelligence.png' };
+    function appendMessage(who, content) {
+      const msg = document.createElement('div'); msg.classList.add('message', who);
+      if (who === 'bot') msg.appendChild(createAvatar('bot'));
+      const bubble = document.createElement('div'); bubble.classList.add('bubble');
+      if (typeof content === 'string') bubble.innerHTML = content;
+      else bubble.appendChild(content);
+      msg.appendChild(bubble);
+      if (who === 'user') msg.appendChild(createAvatar('user'));
+      chatWindow.appendChild(msg);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    function createAvatar(who) { const img = document.createElement('img'); img.src = avatars[who]; img.classList.add('avatar'); return img; }
+    async function sendMessage() {
+      const msg = input.value.trim(); if (!msg) return;
+      appendMessage('user', msg);
+      input.value = '';
+      try {
+        const res = await fetch('/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ session_id: sessionId, message: msg }) });
+        const data = await res.json();
+        renderReply(data.reply || '<strong>No reply received</strong>');
+      } catch (e) {
+        console.error(e);
+        renderReply('<strong>⚠️ Server error</strong>');
+      }
+    }
+    function renderReply(reply) {
+      let text = reply;
+      const jsonMatch = text.match(/```chart([\s\S]+?)```/);
+      if (jsonMatch) {
+        try {
+          const cfg = JSON.parse(jsonMatch[1]);
+          const canvas = document.createElement('canvas'); appendMessage('bot', canvas);
+          cfg.options = { responsive: true, maintainAspectRatio: false, ...(cfg.options||{}) };
+          new Chart(canvas, cfg);
+          text = text.replace(jsonMatch[0], '').trim();
+        } catch (e) { console.error(e); }
+      }
+      const imgMatch = text.match(/!\[.*?\]\((.*?)\)/);
+      if (imgMatch) {
+        const img = document.createElement('img'); img.src = imgMatch[1]; img.classList.add('chart-image'); appendMessage('bot', img);
+        text = text.replace(imgMatch[0], '').trim();
+      }
+      if (!jsonMatch && businessData) {
+        const key = text.toLowerCase(); let cfg;
+        if (text.toLowerCase().includes('inventory')) {
+          const labels = businessData.inventory_levels.map(i=>i.item);
+          cfg = { type:'bar', data:{ labels, datasets:[
+            { label:'On Hand', data:businessData.inventory_levels.map(i=>i.on_hand||i.on_hand_kg) },
+            { label:'Reorder Threshold', data:businessData.inventory_levels.map(i=>i.reorder_threshold||i.reorder_threshold_kg) }
+          ]}, options:{ responsive:true, maintainAspectRatio:false } };
+        } else if (text.toLowerCase().includes('revenue')||text.toLowerCase().includes('profit')) {
+          const labels = businessData.sales.map(s=>s.product);
+          cfg = { type:'bar', data:{ labels, datasets:[{ label:'Revenue', data:businessData.sales.map(s=>s.revenue) }] }, options:{ responsive:true, maintainAspectRatio:false } };
+        }
+        if (cfg) { const canvas = document.createElement('canvas'); appendMessage('bot', canvas); new Chart(canvas, cfg); }
+      }
+      if (text) appendMessage('bot', text);
+    }
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
+  </script>
+</body>
+</html>
